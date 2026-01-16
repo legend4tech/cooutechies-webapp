@@ -1,20 +1,15 @@
-/**
- * Event Form Component
- * Form for creating and editing events with validation using shadcn/ui + Zod
- * Enhanced with modern design, image upload/drag-drop, and speakers section
- */
-
 "use client";
 
-import type React from "react";
+import { createEvent } from "@/app/actions/events";
+import { updateEvent } from "@/app/actions/events";
+import type { EventFormData } from "@/lib/validations";
+import type { SerializedEvent } from "@/types/serialized.types";
 
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Image from "next/image";
-import { createEvent } from "@/app/actions/events";
-import type { EventFormData } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +22,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -35,27 +37,18 @@ import {
   ImageIcon,
   Users,
   FileText,
-  Sparkles,
   Upload,
   X,
   Plus,
   Pencil,
   Trash2,
   Clock,
+  Sparkles,
 } from "lucide-react";
 import { uploadMultipleFilesToS3 } from "@/lib/uploadFileToS3";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-// Default speaker avatar
 const DEFAULT_SPEAKER_IMAGE = "/default-speaker-avatar.png";
 
-// Speaker type
 type Speaker = {
   id: string;
   name: string;
@@ -63,18 +56,6 @@ type Speaker = {
   bio: string;
   image: string;
 };
-
-const speakerAddSchema = z.object({
-  name: z.string().min(1, "Speaker name is required"),
-  title: z.string().min(1, "Speaker title is required"),
-  bio: z.string().optional().default(""),
-  image: z.string(),
-});
-
-const speakerEditSchema = speakerAddSchema.partial();
-
-type SpeakerAddValues = z.infer<typeof speakerAddSchema>;
-type SpeakerEditValues = z.infer<typeof speakerEditSchema>;
 
 const eventFormSchema = z.object({
   title: z
@@ -98,38 +79,92 @@ const eventFormSchema = z.object({
   duration: z.string().min(1, "Duration is required"),
 });
 
-type EventFormValues = z.infer<typeof eventFormSchema>;
+const speakerSchema = z.object({
+  name: z.string().min(1, "Speaker name is required"),
+  title: z.string().min(1, "Speaker title is required"),
+  bio: z.string().optional().default(""),
+  image: z.string(),
+});
 
-export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
+type EventFormValues = z.infer<typeof eventFormSchema>;
+type SpeakerValues = z.infer<typeof speakerSchema>;
+
+interface UnifiedEventFormProps {
+  event?: SerializedEvent;
+  mode?: "create" | "edit";
+}
+
+// Custom hook for image upload using uploadMultipleFilesToS3
+const useImageUpload = () => {
+  const [uploading, setUploading] = useState(false);
+
+  const uploadImages = async (images: string[], descriptions: string[]) => {
+    setUploading(true);
+    try {
+      const uploadedUrls = await uploadMultipleFilesToS3(images, descriptions);
+      return uploadedUrls;
+    } catch (error) {
+      console.error("Upload error:", error);
+      throw error;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return { uploadImages, uploading };
+};
+
+export function EventForm({ event, mode = "create" }: UnifiedEventFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [imagePreview, setImagePreview] = useState<string>(
+    event?.coverImage || ""
+  );
   const [isDragging, setIsDragging] = useState(false);
-  const [speakers, setSpeakers] = useState<Speaker[]>([]);
+  const [speakers, setSpeakers] = useState<Speaker[]>(() =>
+    mode === "edit" && event?.speakers
+      ? event.speakers.map((s, i: number) => ({
+          id: `speaker-${i}`,
+          name: s.name,
+          title: s.role,
+          bio: s.bio || "",
+          image: s.photo || DEFAULT_SPEAKER_IMAGE,
+        }))
+      : []
+  );
   const [editingSpeaker, setEditingSpeaker] = useState<Speaker | null>(null);
   const [speakerImagePreview, setSpeakerImagePreview] = useState<string>(
     DEFAULT_SPEAKER_IMAGE
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speakerImageInputRef = useRef<HTMLInputElement>(null);
+  const { uploadImages, uploading } = useImageUpload();
+
+  const formatDateForInput = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      date: "",
-      location: "",
-      coverImage: "",
-      maxAttendees: "",
-      duration: "1 day",
+      title: event?.title || "",
+      description: event?.description || "",
+      date: event?.date ? formatDateForInput(event.date) : "",
+      location: event?.location || "",
+      coverImage: event?.coverImage || "",
+      maxAttendees: event?.maxAttendees?.toString() || "",
+      duration: event?.duration || "1 day",
     },
   });
 
-  const speakerForm = useForm<SpeakerAddValues | SpeakerEditValues>({
-    resolver: zodResolver(
-      editingSpeaker ? speakerEditSchema : speakerAddSchema
-    ),
+  const speakerForm = useForm<SpeakerValues>({
+    resolver: zodResolver(speakerSchema),
     defaultValues: {
       name: "",
       title: "",
@@ -138,7 +173,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
     },
   });
 
-  // Update speaker form when editingSpeaker changes
   useEffect(() => {
     if (editingSpeaker) {
       speakerForm.reset({
@@ -199,7 +233,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-
     const file = e.dataTransfer.files?.[0];
     if (file) {
       handleImageUpload(file);
@@ -227,40 +260,21 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
     reader.readAsDataURL(file);
   };
 
-  const onSpeakerSubmit = (values: SpeakerAddValues | SpeakerEditValues) => {
-    if (!editingSpeaker && (!values.name || !values.title)) {
-      toast.error("Both name and title are required for new speakers");
-      return;
-    }
-
+  const onSpeakerSubmit = (values: SpeakerValues) => {
     if (editingSpeaker && speakers.find((s) => s.id === editingSpeaker.id)) {
-      // Editing existing speaker
       const updatedSpeakers = speakers.map((s) =>
-        s.id === editingSpeaker.id
-          ? {
-              ...s,
-              name: values.name || s.name,
-              title: values.title || s.title,
-              bio: values.bio || s.bio,
-              image: values.image || s.image,
-            }
-          : s
+        s.id === editingSpeaker.id ? { ...s, ...values } : s
       );
       setSpeakers(updatedSpeakers);
       toast.success("Speaker updated successfully");
     } else {
-      // Adding new speaker
       const newSpeaker: Speaker = {
         id: Date.now().toString(),
-        name: values.name || "",
-        title: values.title || "",
-        bio: values.bio || "",
-        image: values.image || DEFAULT_SPEAKER_IMAGE,
+        ...values,
       };
       setSpeakers([...speakers, newSpeaker]);
       toast.success("Speaker added successfully");
     }
-
     cancelEditSpeaker();
   };
 
@@ -289,21 +303,20 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
     toast.success("Speaker removed");
   };
 
-  const onSubmit = async (values: EventFormValues) => {
+  const handleFormSubmit = async (values: EventFormValues) => {
     setLoading(true);
 
     try {
-      // Prepare arrays for upload
       const imagesToUpload: string[] = [];
       const imageDescriptions: string[] = [];
 
-      // Add cover image if it's base64
+      // Add cover image if it's new base64
       if (values.coverImage.startsWith("data:")) {
         imagesToUpload.push(values.coverImage);
         imageDescriptions.push(`cover-${Date.now()}.jpg`);
       }
 
-      // Add speaker images if they're base64
+      // Add speaker images if they're new base64
       const speakerImageIndexes: number[] = [];
       speakers.forEach((speaker, index) => {
         if (
@@ -316,30 +329,25 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
         }
       });
 
-      // Upload all images to S3 in parallel
+      // Upload all new images using the hook
       let uploadedUrls: string[] = [];
       if (imagesToUpload.length > 0) {
         toast.loading(`Uploading ${imagesToUpload.length} image(s)...`);
-        uploadedUrls = await uploadMultipleFilesToS3(
-          imagesToUpload,
-          imageDescriptions
-        );
+        uploadedUrls = await uploadImages(imagesToUpload, imageDescriptions);
         toast.dismiss();
       }
 
-      // Replace base64 with S3 URLs
+      // Replace base64 with uploaded URLs
       let coverImageUrl = values.coverImage;
       if (values.coverImage.startsWith("data:") && uploadedUrls.length > 0) {
-        coverImageUrl = uploadedUrls[0]; // First URL is cover image
+        coverImageUrl = uploadedUrls[0];
       }
 
-      // Replace speaker base64 images with S3 URLs
       const updatedSpeakers = speakers.map((speaker, index) => {
         const speakerUploadIndex = speakerImageIndexes.indexOf(index);
         let photoUrl = speaker.image;
 
         if (speakerUploadIndex !== -1) {
-          // +1 to account for cover image being first in uploadedUrls
           const urlIndex =
             speakerUploadIndex +
             (values.coverImage.startsWith("data:") ? 1 : 0);
@@ -349,35 +357,51 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
         return {
           name: speaker.name,
           role: speaker.title,
+          bio: speaker.bio,
           photo: photoUrl,
         };
       });
 
-      // Create properly typed event data that matches EventFormData
       const eventData: EventFormData = {
         title: values.title,
         description: values.description,
         date: values.date,
         location: values.location,
         coverImage: coverImageUrl,
-        duration: values.duration || "1 day",
+        duration: values.duration,
         maxAttendees: values.maxAttendees
           ? Number.parseInt(values.maxAttendees)
           : null,
         speakers: updatedSpeakers,
       };
 
-      const result = await createEvent(eventData);
+      console.log(eventData);
+
+      // Call the appropriate action based on mode
+      // FIX: Ensure eventId is a string
+      const result =
+        mode === "edit" && event?._id
+          ? await updateEvent(event._id.toString(), eventData)
+          : await createEvent(eventData);
 
       if (result.success) {
-        toast.success("Event created successfully");
-        router.push("/admin/events");
-        onSuccess?.();
+        toast.success(
+          mode === "edit"
+            ? "Event updated successfully"
+            : "Event created successfully"
+        );
+        if (mode === "create") {
+          router.push("/admin/events");
+        } else if (event?._id) {
+          console.log("Event ID:", event?._id); // Add this before the redirect
+          router.push(`/admin/events/${event._id}`);
+        }
+        router.refresh();
       } else {
-        toast.error(result.error || "Failed to create event");
+        toast.error(result.error || `Failed to ${mode} event`);
       }
     } catch (error) {
-      toast.error("Failed to upload images. Please try again.");
+      toast.error(`Failed to ${mode} event. Please try again.`);
       console.error(error);
     } finally {
       setLoading(false);
@@ -386,20 +410,28 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6 relative">
-      <div className="absolute inset-0 grid-pattern opacity-20 pointer-events-none" />
-      <div className="absolute top-0 right-0 w-100 h-100 bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-75 h-75 bg-secondary/5 rounded-full blur-[100px] pointer-events-none" />
+      {mode === "create" && (
+        <>
+          <div className="absolute inset-0 grid-pattern opacity-20 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-100 h-100 bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-75 h-75 bg-secondary/5 rounded-full blur-[100px] pointer-events-none" />
+        </>
+      )}
 
       <div className="relative z-10 bg-background/80 backdrop-blur-sm rounded-xl border border-border/50 p-8 shadow-lg">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold font-display">
-            <span className="text-gradient">Create Event</span>
-          </h1>
-        </div>
+        {mode === "create" && (
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold font-display">
+              <span className="text-gradient">Create Event</span>
+            </h1>
+          </div>
+        )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Main Event Details */}
+          <form
+            onSubmit={form.handleSubmit(handleFormSubmit)}
+            className="space-y-8"
+          >
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Left Column - Image Upload */}
               <div className="space-y-6">
@@ -429,7 +461,7 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                         {imagePreview ? (
                           <>
                             <Image
-                              src={imagePreview || "/placeholder.svg"}
+                              src={imagePreview}
                               alt="Cover preview"
                               fill
                               className="object-cover"
@@ -514,7 +546,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                   )}
                 />
 
-                {/* Duration field */}
                 <FormField
                   control={form.control}
                   name="duration"
@@ -545,10 +576,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                           <SelectItem value="6 months">6 Months</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription className="text-xs">
-                        Select bootcamp duration (defaults to 1 day if not
-                        specified)
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -563,7 +590,9 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <Sparkles className="w-4 h-4 text-primary" />
+                        {mode === "create" && (
+                          <Sparkles className="w-4 h-4 text-primary" />
+                        )}
                         Event Title
                       </FormLabel>
                       <FormControl>
@@ -592,7 +621,7 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                           placeholder="Describe your event in detail..."
                           rows={6}
                           {...field}
-                          className="bg-background/50 text-foreground border-border/50 focus:border-primary transition-colors resize-none h-36 "
+                          className="bg-background/50 text-foreground border-border/50 focus:border-primary transition-colors resize-none h-36"
                         />
                       </FormControl>
                       <FormMessage />
@@ -656,7 +685,7 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                   size="sm"
                   onClick={addSpeaker}
                   disabled={editingSpeaker !== null}
-                  className="border-primary/30 hover:bg-primary/10"
+                  className="border-primary/30 "
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Speaker
@@ -725,10 +754,9 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                   <Form {...speakerForm}>
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {/* Speaker Image */}
                         <div className="shrink-0">
                           <Image
-                            src={speakerImagePreview || "/placeholder.svg"}
+                            src={speakerImagePreview}
                             alt="Speaker preview"
                             width={80}
                             height={80}
@@ -755,7 +783,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                           </Button>
                         </div>
 
-                        {/* Speaker Name and Title */}
                         <div className="space-y-4">
                           <FormField
                             control={speakerForm.control}
@@ -767,7 +794,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                                   <Input
                                     placeholder="Full name"
                                     {...field}
-                                    value={field.value || ""}
                                     className="bg-background/50 border-border/50 focus:border-primary"
                                   />
                                 </FormControl>
@@ -786,7 +812,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                                   <Input
                                     placeholder="e.g., CTO at Acme Corp"
                                     {...field}
-                                    value={field.value || ""}
                                     className="bg-background/50 border-border/50 focus:border-primary"
                                   />
                                 </FormControl>
@@ -797,7 +822,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                         </div>
                       </div>
 
-                      {/* Speaker Bio */}
                       <FormField
                         control={speakerForm.control}
                         name="bio"
@@ -808,7 +832,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                               <Textarea
                                 placeholder="Brief bio about the speaker..."
                                 {...field}
-                                value={field.value || ""}
                                 rows={3}
                                 className="bg-background/50 border-border/50 focus:border-primary resize-none"
                               />
@@ -818,7 +841,6 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
                         )}
                       />
 
-                      {/* Speaker Form Actions */}
                       <div className="flex gap-3">
                         <Button
                           type="button"
@@ -844,7 +866,10 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
               )}
 
               {speakers.length === 0 && !editingSpeaker && (
-                <div className="text-center py-12 border-2 border-dashed border-border/50 rounded-lg bg-muted/20">
+                <div
+                  className="text-center py-12 border-2 border-dashed border-border/50
+                rounded-lg bg-muted/20"
+                >
                   <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
                   <p className="text-sm text-muted-foreground">
                     No speakers added yet
@@ -856,11 +881,25 @@ export function EventForm({ onSuccess }: { onSuccess?: () => void }) {
             {/* Form Actions */}
             <div className="flex gap-4 justify-end pt-4">
               <Button
-                type="submit"
-                disabled={loading || editingSpeaker !== null}
-                className="w-full h-12 bg-primary hover:bg-primary/90"
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                disabled={loading}
               >
-                {loading ? "Creating Event..." : "Create Event"}
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading || editingSpeaker !== null || uploading}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {loading || uploading
+                  ? mode === "edit"
+                    ? "Updating Event..."
+                    : "Creating Event..."
+                  : mode === "edit"
+                  ? "Update Event"
+                  : "Create Event"}
               </Button>
             </div>
           </form>

@@ -1,7 +1,7 @@
 /**
  * Dashboard Statistics Server Actions
  * Aggregates data for the dashboard overview
- * Provides real-time metrics and activity feed
+ * Provides real-time metrics and activity feed with pagination
  */
 
 "use server";
@@ -52,28 +52,56 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 }
 
 /**
- * Get activity log (recent actions)
+ * Get activity log with pagination
+ * @param page - Page number (1-indexed)
+ * @param limit - Number of items per page
  */
-export async function getActivityLog(limit = 10) {
+export async function getActivityLog(page: number = 1, limit: number = 5) {
   try {
     const { db } = await connectToDatabase();
     const activitiesCollection = db.collection<ActivityLog>("activities");
 
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination metadata
+    const total = await activitiesCollection.countDocuments({});
+
+    // Fetch paginated activities
     const activities = await activitiesCollection
       .find({})
       .sort({ createdAt: -1 })
+      .skip(skip)
       .limit(limit)
       .toArray();
 
+    // Serialize MongoDB ObjectIds to strings for client components
+    const serializedActivities = activities.map((activity) => ({
+      _id: activity._id.toString(),
+      action: activity.action,
+      eventId: activity.eventId?.toString(),
+      details: activity.details,
+      createdAt: activity.createdAt.toISOString(),
+    }));
+
     return {
       success: true,
-      data: activities,
+      data: serializedActivities,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   } catch (error) {
     console.error("[Dashboard] Activity log fetch failed:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
+      data: [],
+      total: 0,
+      page: 1,
+      limit,
+      totalPages: 0,
     };
   }
 }

@@ -2,13 +2,13 @@
 
 import { motion } from "framer-motion";
 import { Target, Users, Github, Linkedin, Twitter, Mail } from "lucide-react";
-import { useCoreTeamMembers } from "../hooks/tanstack-query-hooks/use-core-team";
 import {
   EmptyState,
   ErrorFallback,
   TeamCardSkeleton,
 } from "./BiographyFallbacks";
 import Image from "next/image";
+import { useCoreTeamMembers } from "@/hooks/tanstack-query/use-core-team";
 
 const containerVariants = {
   hidden: { opacity: 0 },

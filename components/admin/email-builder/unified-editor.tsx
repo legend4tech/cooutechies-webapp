@@ -27,7 +27,7 @@ function createButtonHTML(
   bgColor: string,
   textColor: string
 ): string {
-  return `<p style="text-align: center; margin: 32px 0;"><a href="${url}" style="display: inline-block; padding: 12px 36px; background-color: ${bgColor}; color: ${textColor}; border-radius: 10px; font-weight: 700; font-size: 18px; text-decoration: none; border: 2px solid ${bgColor};">${text}</a></p>`;
+  return `<p style="text-align: center; margin: 32px 0;"><button href="${url}" style="display: inline-block; padding: 12px 36px; background-color: ${bgColor}; color: ${textColor}; border-radius: 10px; font-weight: 700; font-size: 18px; text-decoration: none; border: 2px solid ${bgColor};">${text}</button></p>`;
 }
 
 // Generate image HTML with configurable alignment

@@ -11,6 +11,11 @@ import { connectToDatabase } from "@/lib/db";
 import { ObjectId } from "mongodb";
 import { CoreTeamFormData, coreTeamFormSchema } from "@/lib/core-team-schema";
 import { CoreTeamMember, CoreTeamMemberDB } from "@/types/core-team.types";
+import { requireAuth } from "@/lib/auth-helper";
+
+// Collection names from environment
+const CORE_TEAM_COLLECTION = process.env.CORE_TEAM_COLLECTION!;
+const ACTIVITIES_COLLECTION = process.env.ACTIVITIES_COLLECTION!;
 
 /**
  * Helper function to serialize MongoDB documents for client components
@@ -37,6 +42,9 @@ function serializeMember(member: CoreTeamMemberDB): CoreTeamMember {
 export async function createCoreTeamMember(
   formData: CoreTeamFormData
 ): Promise<ApiResponse<{ memberId: string }>> {
+  const authError = await requireAuth();
+  if (authError) return authError;
+
   try {
     // Validate form data
     const validatedData = coreTeamFormSchema.parse(formData);
@@ -67,11 +75,12 @@ export async function createCoreTeamMember(
     };
 
     const { db } = await connectToDatabase();
-    const coreTeamCollection = db.collection<CoreTeamMemberDB>("coreTeam");
+    const coreTeamCollection =
+      db.collection<CoreTeamMemberDB>(CORE_TEAM_COLLECTION);
     const result = await coreTeamCollection.insertOne(member);
 
     // Log activity for audit trail
-    const activitiesCollection = db.collection("activities");
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
     await activitiesCollection.insertOne({
       action: "core_team_member_created",
       memberId: result.insertedId,
@@ -106,7 +115,8 @@ export async function getCoreTeamMembers(): Promise<
 > {
   try {
     const { db } = await connectToDatabase();
-    const coreTeamCollection = db.collection<CoreTeamMemberDB>("coreTeam");
+    const coreTeamCollection =
+      db.collection<CoreTeamMemberDB>(CORE_TEAM_COLLECTION);
     const membersDB = await coreTeamCollection
       .find({})
       .sort({ createdAt: -1 })
@@ -117,8 +127,11 @@ export async function getCoreTeamMembers(): Promise<
 
     return {
       success: true,
+      message: "Successfully Fetched CoreTeam Members",
+
       data: {
         members,
+
         total: members.length,
       },
     };
@@ -126,6 +139,7 @@ export async function getCoreTeamMembers(): Promise<
     console.error("[Core Team] Get all failed:", error);
     return {
       success: false,
+      message: "Error Getting All core team",
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
@@ -143,12 +157,15 @@ export async function getCoreTeamMemberById(
     if (!ObjectId.isValid(memberId)) {
       return {
         success: false,
+        message: "Error Getting  core team by id",
+
         error: "Invalid member ID",
       };
     }
 
     const { db } = await connectToDatabase();
-    const coreTeamCollection = db.collection<CoreTeamMemberDB>("coreTeam");
+    const coreTeamCollection =
+      db.collection<CoreTeamMemberDB>(CORE_TEAM_COLLECTION);
     const memberDB = await coreTeamCollection.findOne({
       _id: new ObjectId(memberId),
     });
@@ -156,6 +173,8 @@ export async function getCoreTeamMemberById(
     if (!memberDB) {
       return {
         success: false,
+        message: "Error Getting  core team by id",
+
         error: "Member not found",
       };
     }
@@ -165,12 +184,16 @@ export async function getCoreTeamMemberById(
 
     return {
       success: true,
+      message: "Data fetched successfully",
+
       data: member,
     };
   } catch (error) {
     console.error("[Core Team] Get by ID failed:", error);
     return {
       success: false,
+      message: "Error Getting core team by id",
+
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
@@ -224,7 +247,8 @@ export async function updateCoreTeamMember(
     updateData.updatedAt = new Date();
 
     const { db } = await connectToDatabase();
-    const coreTeamCollection = db.collection<CoreTeamMemberDB>("coreTeam");
+    const coreTeamCollection =
+      db.collection<CoreTeamMemberDB>(CORE_TEAM_COLLECTION);
     const result = await coreTeamCollection.updateOne(
       { _id: new ObjectId(memberId) },
       { $set: updateData }
@@ -238,7 +262,7 @@ export async function updateCoreTeamMember(
     }
 
     // Log activity for audit trail
-    const activitiesCollection = db.collection("activities");
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
     await activitiesCollection.insertOne({
       action: "core_team_member_updated",
       memberId: new ObjectId(memberId),
@@ -277,7 +301,8 @@ export async function deleteCoreTeamMember(
     }
 
     const { db } = await connectToDatabase();
-    const coreTeamCollection = db.collection<CoreTeamMemberDB>("coreTeam");
+    const coreTeamCollection =
+      db.collection<CoreTeamMemberDB>(CORE_TEAM_COLLECTION);
 
     // Fetch member for audit trail details
     const member = await coreTeamCollection.findOne({
@@ -296,7 +321,7 @@ export async function deleteCoreTeamMember(
     }
 
     // Log activity for audit trail
-    const activitiesCollection = db.collection("activities");
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
     await activitiesCollection.insertOne({
       action: "core_team_member_deleted",
       memberId: new ObjectId(memberId),

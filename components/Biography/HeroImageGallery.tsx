@@ -4,7 +4,7 @@ import type React from "react";
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, easeInOut } from "framer-motion";
-import { useCoreTeamMembers } from "@/hooks/tanstack-query/use-core-team-members";
+import { useCoreTeamMembers } from "@/hooks/tanstack-query/use-core-team";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HeroImageGallery() {

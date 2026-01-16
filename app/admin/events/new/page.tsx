@@ -1,4 +1,4 @@
-import { EventForm } from "@/components/admin/event-form";
+import { EventForm } from "@/components/admin/admin-event-page/event-form";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles } from "lucide-react";
@@ -15,12 +15,7 @@ export default function NewEventPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
             {/* Back Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              className="h-9 w-9 hover:bg-primary/10 transition-colors shrink-0"
-            >
+            <Button size="icon" asChild className="h-9 w-9 shrink-0">
               <Link href="/admin/events">
                 <ArrowLeft className="h-5 w-5" />
               </Link>

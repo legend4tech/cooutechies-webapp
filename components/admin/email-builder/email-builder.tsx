@@ -50,7 +50,7 @@ export function EmailBuilder() {
         // Upload to S3
         const s3Url = await uploadFileToS3(
           base64Url,
-          `email-image-${Date.now()}-${i}.jpg`
+          `email-image-${Date.now()}-${i}.jpg`,
         );
 
         // Replace base64 with S3 URL in HTML
@@ -128,11 +128,7 @@ export function EmailBuilder() {
             {/* Left: Navigation & Title */}
             <div className="flex items-center gap-4">
               <Link href="/admin/emails">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hover:bg-muted/50"
-                >
+                <Button size="icon">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>

@@ -21,6 +21,7 @@ export const metadata = {
 async function CoreTeamContent() {
   // Fetch core team members on the server
   const response = await getCoreTeamMembers();
+  console.log(response);
 
   if (!response?.data) {
     return <CoreTeamError />;

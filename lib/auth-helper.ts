@@ -14,9 +14,16 @@ import type { ApiResponse } from "@/types/data.types";
  * @param requireAdmin - If true, requires admin role. If false, any authenticated user is OK
  * @returns ApiResponse error or null if authenticated
  */
-export async function requireAuth(
+/**
+ * Check if user is authenticated admin
+ * Returns error response if not authenticated, null if OK
+ *
+ * @param requireAdmin - If true, requires admin role. If false, any authenticated user is OK
+ * @returns ApiResponse error or null if authenticated
+ */
+export async function requireAuth<T = unknown>(
   requireAdmin = true
-): Promise<ApiResponse | null> {
+): Promise<ApiResponse<T> | null> {
   const session = await auth();
 
   if (!session?.user) {
@@ -24,7 +31,7 @@ export async function requireAuth(
       success: false,
       message: "Unauthorized",
       error: "You must be logged in to perform this action",
-    };
+    } as ApiResponse<T>;
   }
 
   if (requireAdmin) {
@@ -34,7 +41,7 @@ export async function requireAuth(
         success: false,
         message: "Forbidden",
         error: "You do not have permission to perform this action",
-      };
+      } as ApiResponse<T>;
     }
   }
 

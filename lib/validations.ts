@@ -50,8 +50,9 @@ export const eventSchema = z.object({
       z.object({
         name: z.string().min(2),
         role: z.string().min(2),
+        bio: z.string().optional(),
         photo: z.string().url().optional().nullable(),
-      })
+      }),
     )
     .optional()
     .default([]),

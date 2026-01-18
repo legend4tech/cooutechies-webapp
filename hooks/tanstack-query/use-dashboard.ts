@@ -8,17 +8,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardStats, getActivityLog } from "@/app/actions/dashboard";
-import type { DashboardStats } from "@/types/data.types";
-
-// Serialized ActivityLog type for client-side use
-export interface SerializedActivityLog {
-  _id: string;
-  action: string;
-  eventId?: string;
-  memberId?: string;
-  details: string;
-  createdAt: string;
-}
+import type {
+  DashboardStats,
+  ActivityLogPaginatedResponse,
+} from "@/types/data.types";
 
 // ============================================================================
 // QUERY KEYS
@@ -44,8 +37,13 @@ export function useDashboardStats() {
   return useQuery<DashboardStats>({
     queryKey: dashboardKeys.stats(),
     queryFn: async () => {
-      const stats = await getDashboardStats();
-      return stats;
+      const response = await getDashboardStats();
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "Failed to fetch dashboard stats");
+      }
+
+      return response.data;
     },
     staleTime: 30 * 1000, // 30 seconds
     refetchInterval: 30 * 1000, // Auto-refetch every 30 seconds
@@ -57,35 +55,23 @@ export function useDashboardStats() {
 // GET ACTIVITY LOG WITH PAGINATION
 // ============================================================================
 
-interface ActivityLogResponse {
-  activities: SerializedActivityLog[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
 /**
  * Hook to fetch activity log with pagination support
  * @param page - Current page number (1-indexed)
  * @param limit - Number of activities per page
  */
 export function useActivityLog(page: number = 1, limit: number = 5) {
-  return useQuery<ActivityLogResponse>({
+  return useQuery<ActivityLogPaginatedResponse>({
     queryKey: dashboardKeys.activityList(page, limit),
-    queryFn: async () => {
+    queryFn: async (): Promise<ActivityLogPaginatedResponse> => {
       const response = await getActivityLog(page, limit);
-      if (!response.success) {
+
+      if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to fetch activity log");
       }
 
-      return {
-        activities: response.data || [],
-        total: response.total || 0,
-        page: response.page || 1,
-        limit: response.limit || limit,
-        totalPages: response.totalPages || 1,
-      };
+      // The server action already serializes the data
+      return response.data;
     },
     staleTime: 1 * 60 * 1000, // 1 minute
     refetchOnWindowFocus: true,

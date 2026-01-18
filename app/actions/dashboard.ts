@@ -6,13 +6,31 @@
 
 "use server";
 
+import { requireAuth } from "@/lib/auth-helper";
 import { connectToDatabase } from "@/lib/db";
-import { ActivityLog, DashboardStats } from "@/types/data.types";
+import {
+  ActivityLog,
+  DashboardStats,
+  ApiResponse,
+  ActivityLogPaginatedResponse,
+  SerializedActivityLog,
+} from "@/types/data.types";
+
+// Collection names from environment
+const EVENTS_COLLECTION = process.env.EVENTS_COLLECTION!;
+const REGISTRATIONS_COLLECTION = process.env.REGISTRATIONS_COLLECTION!;
+const EMAIL_LOGS_COLLECTION = process.env.EMAIL_LOGS_COLLECTION!;
+const ACTIVITIES_COLLECTION = process.env.ACTIVITIES_COLLECTION!;
 
 /**
  * Get dashboard statistics
  */
-export async function getDashboardStats(): Promise<DashboardStats> {
+export async function getDashboardStats(): Promise<
+  ApiResponse<DashboardStats>
+> {
+  const authError = await requireAuth<DashboardStats>();
+  if (authError) return authError;
+
   try {
     const { db } = await connectToDatabase();
     const now = new Date();
@@ -20,9 +38,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     // Calculate stats in parallel
     const [totalEvents, totalRegistrations, emailsLast7Days] =
       await Promise.all([
-        db.collection("events").countDocuments({}),
-        db.collection("registrations").countDocuments({}),
-        db.collection("email_logs").countDocuments({
+        db.collection(EVENTS_COLLECTION).countDocuments({}),
+        db.collection(REGISTRATIONS_COLLECTION).countDocuments({}),
+        db.collection(EMAIL_LOGS_COLLECTION).countDocuments({
           sentAt: {
             $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
           },
@@ -30,23 +48,28 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       ]);
 
     // Calculate upcoming events
-    const upcomingEvents = await db.collection("events").countDocuments({
-      date: { $gte: now },
-    });
+    const upcomingEvents = await db
+      .collection(EVENTS_COLLECTION)
+      .countDocuments({
+        date: { $gte: now },
+      });
 
     return {
-      totalEvents,
-      upcomingEvents,
-      totalRegistrations,
-      emailsSentLast7Days: emailsLast7Days,
+      success: true,
+      message: "Dashboard stats fetched successfully",
+      data: {
+        totalEvents,
+        upcomingEvents,
+        totalRegistrations,
+        emailsSentLast7Days: emailsLast7Days,
+      },
     };
   } catch (error) {
     console.error("[Dashboard] Stats fetch failed:", error);
     return {
-      totalEvents: 0,
-      upcomingEvents: 0,
-      totalRegistrations: 0,
-      emailsSentLast7Days: 0,
+      success: false,
+      message: "Failed to fetch dashboard stats",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -56,10 +79,18 @@ export async function getDashboardStats(): Promise<DashboardStats> {
  * @param page - Page number (1-indexed)
  * @param limit - Number of items per page
  */
-export async function getActivityLog(page: number = 1, limit: number = 5) {
+export async function getActivityLog(
+  page: number = 1,
+  limit: number = 5,
+): Promise<ApiResponse<ActivityLogPaginatedResponse>> {
+  const authError = await requireAuth<ActivityLogPaginatedResponse>();
+  if (authError) return authError;
+
   try {
     const { db } = await connectToDatabase();
-    const activitiesCollection = db.collection<ActivityLog>("activities");
+    const activitiesCollection = db.collection<ActivityLog>(
+      ACTIVITIES_COLLECTION,
+    );
 
     // Calculate skip value for pagination
     const skip = (page - 1) * limit;
@@ -76,32 +107,34 @@ export async function getActivityLog(page: number = 1, limit: number = 5) {
       .toArray();
 
     // Serialize MongoDB ObjectIds to strings for client components
-    const serializedActivities = activities.map((activity) => ({
-      _id: activity._id.toString(),
-      action: activity.action,
-      eventId: activity.eventId?.toString(),
-      details: activity.details,
-      createdAt: activity.createdAt.toISOString(),
-    }));
+    const serializedActivities: SerializedActivityLog[] = activities.map(
+      (activity) => ({
+        _id: activity._id.toString(),
+        action: activity.action,
+        eventId: activity.eventId?.toString(),
+        memberId: activity.memberId?.toString(),
+        details: activity.details,
+        createdAt: activity.createdAt.toISOString(),
+      }),
+    );
 
     return {
       success: true,
-      data: serializedActivities,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      message: "Activity log fetched successfully",
+      data: {
+        activities: serializedActivities,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   } catch (error) {
     console.error("[Dashboard] Activity log fetch failed:", error);
     return {
       success: false,
+      message: "Failed to fetch activity log",
       error: error instanceof Error ? error.message : "Unknown error",
-      data: [],
-      total: 0,
-      page: 1,
-      limit,
-      totalPages: 0,
     };
   }
 }

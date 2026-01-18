@@ -16,7 +16,7 @@ type DeviceType = "desktop" | "mobile";
 export function EmailPreview({ subject, htmlContent }: EmailPreviewProps) {
   const [device, setDevice] = useState<DeviceType>("desktop");
 
-  const logoUrl = "https://i.ibb.co/JR0gfbM/coou-techies-logo.png";
+  const logoUrl = "/email-logo.png";
 
   // Memoize styles to prevent unnecessary recalculations
   const emailStyles = useMemo(() => {
@@ -303,7 +303,7 @@ export function EmailPreview({ subject, htmlContent }: EmailPreviewProps) {
             onClick={() => setDevice("desktop")}
             className={cn(
               "h-8 px-3 gap-2",
-              device === "desktop" && "bg-primary/20 text-primary"
+              device === "desktop" && "bg-primary/20 text-primary",
             )}
           >
             <Monitor className="h-4 w-4" />
@@ -315,7 +315,7 @@ export function EmailPreview({ subject, htmlContent }: EmailPreviewProps) {
             onClick={() => setDevice("mobile")}
             className={cn(
               "h-8 px-3 gap-2",
-              device === "mobile" && "bg-primary/20 text-primary"
+              device === "mobile" && "bg-primary/20 text-primary",
             )}
           >
             <Smartphone className="h-4 w-4" />
@@ -341,7 +341,7 @@ export function EmailPreview({ subject, htmlContent }: EmailPreviewProps) {
           transition={{ duration: 0.2 }}
           className={cn(
             "mx-auto transition-all duration-300",
-            device === "mobile" ? "max-w-93.75" : "max-w-170"
+            device === "mobile" ? "max-w-93.75" : "max-w-170",
           )}
         >
           <div
@@ -349,7 +349,7 @@ export function EmailPreview({ subject, htmlContent }: EmailPreviewProps) {
               "bg-[#0a0f1a] overflow-hidden",
               device === "mobile"
                 ? "rounded-[40px] p-2 border-4 border-border shadow-2xl"
-                : "rounded-xl border border-border shadow-xl"
+                : "rounded-xl border border-border shadow-xl",
             )}
           >
             {/* Phone notch for mobile */}
@@ -363,7 +363,7 @@ export function EmailPreview({ subject, htmlContent }: EmailPreviewProps) {
               srcDoc={fullHtml}
               className={cn(
                 "w-full border-0 bg-transparent",
-                device === "mobile" ? "h-150 rounded-b-4xl" : "h-175"
+                device === "mobile" ? "h-150 rounded-b-4xl" : "h-175",
               )}
               title="Email Preview"
               sandbox="allow-same-origin"

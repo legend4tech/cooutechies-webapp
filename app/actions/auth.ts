@@ -10,16 +10,15 @@ import type {
 } from "@/types/auth.types";
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
-const ADMIN_COLLECTION_NAME = process.env.ADMIN_COLLECTION_NAME!;
-const AUTH_ACTIVITIES_COLLECTION_NAME =
-  process.env.AUTH_ACTIVITIES_COLLECTION_NAME!;
+const ADMIN_COLLECTION = process.env.ADMIN_COLLECTION!;
+const ACTIVITIES_COLLECTION = process.env.ACTIVITIES_COLLECTION!;
 
 /**
  * Login Server Action
  * Authenticates admin user
  */
 export async function loginAction(
-  payload: LoginPayload
+  payload: LoginPayload,
 ): Promise<ApiResponse<{ redirectUrl: string }>> {
   try {
     await signIn("credentials", {
@@ -52,7 +51,7 @@ export async function loginAction(
  * Creates new admin user
  */
 export async function registerAction(
-  payload: RegisterPayload
+  payload: RegisterPayload,
 ): Promise<ApiResponse<{ userId: string }>> {
   try {
     if (payload.adminToken !== ADMIN_TOKEN) {
@@ -64,7 +63,7 @@ export async function registerAction(
     }
 
     const { db } = await connectToDatabase();
-    const adminCollection = db.collection(ADMIN_COLLECTION_NAME);
+    const adminCollection = db.collection(ADMIN_COLLECTION);
 
     const existingAdmin = await adminCollection.findOne({
       email: payload.email.toLowerCase(),
@@ -90,7 +89,7 @@ export async function registerAction(
     });
 
     // Log activity
-    const activitiesCollection = db.collection(AUTH_ACTIVITIES_COLLECTION_NAME);
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
     await activitiesCollection.insertOne({
       action: "admin_registered",
       userId: result.insertedId,

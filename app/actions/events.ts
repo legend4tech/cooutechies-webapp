@@ -1,5 +1,5 @@
 /**
- * Event Server Actions (Updated with Serialization)
+ * Event Server Actions (Updated with Serialization and Auth)
  * All return types properly serialized for client consumption
  */
 
@@ -14,16 +14,27 @@ import type {
 } from "@/types/serialized.types";
 import { connectToDatabase } from "@/lib/db";
 import { ObjectId } from "mongodb";
+import { requireAuth } from "@/lib/auth-helper";
+
+// Collection names from environment
+const EVENTS_COLLECTION = process.env.EVENTS_COLLECTION!;
+const EVENT_REGISTRATIONS_COLLECTION =
+  process.env.EVENT_REGISTRATIONS_COLLECTION!;
+const EMAIL_LOGS_COLLECTION = process.env.EMAIL_LOGS_COLLECTION!;
+const ACTIVITIES_COLLECTION = process.env.ACTIVITIES_COLLECTION!;
 
 /**
  * Create a new event with uploaded images
  */
 export async function createEvent(
-  formData: EventFormData
+  formData: EventFormData,
 ): Promise<ApiResponse<{ eventId: string }>> {
+  const authError = await requireAuth<{ eventId: string }>();
+  if (authError) return authError;
+
   try {
     const { db } = await connectToDatabase();
-    const eventsCollection = db.collection<Event>("events");
+    const eventsCollection = db.collection<Event>(EVENTS_COLLECTION);
 
     const event: Event = {
       _id: new ObjectId(),
@@ -46,7 +57,7 @@ export async function createEvent(
 
     const result = await eventsCollection.insertOne(event);
 
-    const activitiesCollection = db.collection("activities");
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
     await activitiesCollection.insertOne({
       action: "event_created",
       eventId: result.insertedId,
@@ -75,11 +86,11 @@ export async function createEvent(
  */
 export async function getEvents(
   page = 1,
-  limit = 10
+  limit = 10,
 ): Promise<ApiResponse<PaginatedEventsResponse>> {
   try {
     const { db } = await connectToDatabase();
-    const eventsCollection = db.collection<Event>("events");
+    const eventsCollection = db.collection<Event>(EVENTS_COLLECTION);
 
     const skip = (page - 1) * limit;
 
@@ -93,7 +104,9 @@ export async function getEvents(
       eventsCollection.countDocuments({}),
     ]);
 
-    const registrationsCollection = db.collection("eventRegistrations");
+    const registrationsCollection = db.collection(
+      EVENT_REGISTRATIONS_COLLECTION,
+    );
 
     const eventsWithCounts = await Promise.all(
       events.map(async (event) => {
@@ -118,13 +131,12 @@ export async function getEvents(
           announcementSentAt: event.announcementSentAt?.toISOString(),
           registrationCount,
         };
-      })
+      }),
     );
 
     return {
       success: true,
       message: "Events fetched successfully",
-
       data: {
         events: eventsWithCounts,
         total,
@@ -136,8 +148,7 @@ export async function getEvents(
     console.error("[Events] Get failed:", error);
     return {
       success: false,
-      message: "Ecountered error Fetching Events ",
-
+      message: "Encountered error fetching events",
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
@@ -148,20 +159,19 @@ export async function getEvents(
  * Returns fully serialized data safe for client components
  */
 export async function getEventById(
-  eventId: string
+  eventId: string,
 ): Promise<ApiResponse<SerializedEventDetailResponse>> {
   try {
     if (!ObjectId.isValid(eventId)) {
       return {
         success: false,
-        message: "  Invalid event ID",
-
+        message: "Invalid event ID",
         error: "Invalid event ID",
       };
     }
 
     const { db } = await connectToDatabase();
-    const eventsCollection = db.collection<Event>("events");
+    const eventsCollection = db.collection<Event>(EVENTS_COLLECTION);
 
     const event = await eventsCollection.findOne({
       _id: new ObjectId(eventId),
@@ -170,14 +180,15 @@ export async function getEventById(
     if (!event) {
       return {
         success: false,
-        message: "Ecountered error Fetching Events ",
-
+        message: "Event not found",
         error: "Event not found",
       };
     }
 
-    const registrationsCollection = db.collection("eventRegistrations");
-    const remindersCollection = db.collection("email_reminders");
+    const registrationsCollection = db.collection(
+      EVENT_REGISTRATIONS_COLLECTION,
+    );
+    const remindersCollection = db.collection(EMAIL_LOGS_COLLECTION);
 
     const [registrations, reminders] = await Promise.all([
       registrationsCollection.find({ eventId: event._id }).toArray(),
@@ -225,8 +236,7 @@ export async function getEventById(
 
     return {
       success: true,
-      message: "Events fetched successfully",
-
+      message: "Event fetched successfully",
       data: {
         event: serializedEvent,
         registrations: serializedRegistrations,
@@ -238,8 +248,7 @@ export async function getEventById(
     console.error("[Events] Get by ID failed:", error);
     return {
       success: false,
-      message: "Ecountered error Fetching Events ",
-
+      message: "Encountered error fetching event",
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
@@ -250,8 +259,11 @@ export async function getEventById(
  */
 export async function updateEvent(
   eventId: string,
-  formData: Partial<EventFormData>
-): Promise<ApiResponse> {
+  formData: Partial<EventFormData>,
+): Promise<ApiResponse<never>> {
+  const authError = await requireAuth<never>();
+  if (authError) return authError;
+
   try {
     if (!ObjectId.isValid(eventId)) {
       return {
@@ -275,11 +287,10 @@ export async function updateEvent(
       updateData.speakers = formData.speakers.map((speaker) => ({
         name: speaker.name,
         role: speaker.role,
-        bio: speaker.bio || undefined, // Convert empty string to undefined
-        photo: speaker.photo || undefined, // Convert null/empty to undefined
+        bio: speaker.bio || undefined,
+        photo: speaker.photo || undefined,
       }));
     }
-    // ✅ FIX: Convert null to undefined for maxAttendees
     if (formData.maxAttendees !== undefined) {
       updateData.maxAttendees = formData.maxAttendees ?? undefined;
     }
@@ -288,11 +299,11 @@ export async function updateEvent(
     updateData.updatedAt = new Date();
 
     const { db } = await connectToDatabase();
-    const eventsCollection = db.collection<Event>("events");
+    const eventsCollection = db.collection<Event>(EVENTS_COLLECTION);
 
     const result = await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
-      { $set: updateData }
+      { $set: updateData },
     );
 
     if (result.matchedCount === 0) {
@@ -301,6 +312,15 @@ export async function updateEvent(
         message: "Event not found",
       };
     }
+
+    // Log activity
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
+    await activitiesCollection.insertOne({
+      action: "event_updated",
+      eventId: new ObjectId(eventId),
+      details: `Event "${formData.title || "Unknown"}" updated`,
+      createdAt: new Date(),
+    });
 
     return {
       success: true,
@@ -315,10 +335,16 @@ export async function updateEvent(
     };
   }
 }
+
 /**
  * Delete event and all related data
  */
-export async function deleteEvent(eventId: string): Promise<ApiResponse> {
+export async function deleteEvent(
+  eventId: string,
+): Promise<ApiResponse<never>> {
+  const authError = await requireAuth<never>();
+  if (authError) return authError;
+
   try {
     if (!ObjectId.isValid(eventId)) {
       return {
@@ -328,7 +354,12 @@ export async function deleteEvent(eventId: string): Promise<ApiResponse> {
     }
 
     const { db } = await connectToDatabase();
-    const eventsCollection = db.collection<Event>("events");
+    const eventsCollection = db.collection<Event>(EVENTS_COLLECTION);
+
+    // Get event title for activity log
+    const event = await eventsCollection.findOne({
+      _id: new ObjectId(eventId),
+    });
 
     const result = await eventsCollection.deleteOne({
       _id: new ObjectId(eventId),
@@ -341,17 +372,24 @@ export async function deleteEvent(eventId: string): Promise<ApiResponse> {
       };
     }
 
+    // Delete related data
     await Promise.all([
       db
-        .collection("eventRegistrations")
+        .collection(EVENT_REGISTRATIONS_COLLECTION)
         .deleteMany({ eventId: new ObjectId(eventId) }),
       db
-        .collection("email_reminders")
-        .deleteMany({ eventId: new ObjectId(eventId) }),
-      db
-        .collection("email_logs")
+        .collection(EMAIL_LOGS_COLLECTION)
         .deleteMany({ eventId: new ObjectId(eventId) }),
     ]);
+
+    // Log activity
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
+    await activitiesCollection.insertOne({
+      action: "event_deleted",
+      eventId: new ObjectId(eventId),
+      details: `Event "${event?.title || "Unknown"}" deleted`,
+      createdAt: new Date(),
+    });
 
     return {
       success: true,

@@ -6,6 +6,13 @@ import { ObjectId } from "mongodb";
 import EventAnnouncementEmail from "@/components/email-templates/event-announcement-email";
 import EventReminderEmail from "@/components/email-templates/event-reminder-email";
 import CustomBroadcastEmail from "@/components/email-templates/custom-broadcast-email";
+import { requireAuth } from "@/lib/auth-helper";
+
+// Collection names from environment
+const EVENTS_COLLECTION = process.env.EVENTS_COLLECTION!;
+const REGISTRATIONS_COLLECTION = process.env.REGISTRATIONS_COLLECTION!;
+const EMAIL_LOGS_COLLECTION = process.env.EMAIL_LOGS_COLLECTION!;
+const ACTIVITIES_COLLECTION = process.env.ACTIVITIES_COLLECTION!;
 
 // ============================================
 // TYPE DEFINITIONS
@@ -86,8 +93,17 @@ export async function sendEventAnnouncement(
     date: string;
     location: string;
     thumbnail?: string;
-  }
+  },
 ): Promise<EmailResponse> {
+  const authError = await requireAuth<never>();
+  if (authError) {
+    return {
+      success: false,
+      message: authError.message,
+      error: authError.error,
+    };
+  }
+
   try {
     // Validate API key is configured
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -99,7 +115,7 @@ export async function sendEventAnnouncement(
     const { db } = await connectToDatabase();
 
     // Fetch all registered community members
-    const registrationsCollection = db.collection("registrations");
+    const registrationsCollection = db.collection(REGISTRATIONS_COLLECTION);
     const registrations = (await registrationsCollection
       .find({ status: "registered" })
       .toArray()) as RegistrationDocument[];
@@ -116,7 +132,7 @@ export async function sendEventAnnouncement(
       .map((reg) => reg.email)
       .filter(
         (email): email is string =>
-          typeof email === "string" && email.length > 0
+          typeof email === "string" && email.length > 0,
       );
 
     if (recipientEmails.length === 0) {
@@ -150,14 +166,14 @@ export async function sendEventAnnouncement(
     }
 
     // Update event document - mark announcement as sent
-    const eventsCollection = db.collection("events");
+    const eventsCollection = db.collection(EVENTS_COLLECTION);
     await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
-      { $set: { announcementSent: true, announcementSentAt: new Date() } }
+      { $set: { announcementSent: true, announcementSentAt: new Date() } },
     );
 
     // Log email send in database
-    const emailLogsCollection = db.collection("email_logs");
+    const emailLogsCollection = db.collection(EMAIL_LOGS_COLLECTION);
     await emailLogsCollection.insertOne({
       eventId: new ObjectId(eventId),
       emailType: "announcement",
@@ -169,7 +185,7 @@ export async function sendEventAnnouncement(
     } as EmailLogDocument);
 
     // Record activity for audit trail
-    const activitiesCollection = db.collection("activities");
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
     await activitiesCollection.insertOne({
       action: "event_announcement_sent",
       eventId: new ObjectId(eventId),
@@ -209,8 +225,17 @@ export async function sendEventReminder(
     date: string;
     location: string;
   },
-  timeFrame: TimeFrame
+  timeFrame: TimeFrame,
 ): Promise<EmailResponse> {
+  const authError = await requireAuth<never>();
+  if (authError) {
+    return {
+      success: false,
+      message: authError.message,
+      error: authError.error,
+    };
+  }
+
   try {
     // Validate API key is configured
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -220,7 +245,7 @@ export async function sendEventReminder(
 
     // Connect to database
     const { db } = await connectToDatabase();
-    const emailLogsCollection = db.collection("email_logs");
+    const emailLogsCollection = db.collection(EMAIL_LOGS_COLLECTION);
 
     // Check if reminder for this timeFrame was already sent to prevent duplicates
     const existingReminder = (await emailLogsCollection.findOne({
@@ -254,7 +279,7 @@ export async function sendEventReminder(
           timeFrame,
           eventLink,
         }),
-      })
+      }),
     );
 
     // Wait for all emails to send
@@ -265,7 +290,7 @@ export async function sendEventReminder(
     if (failedEmails.length > 0) {
       console.error(
         "[Email] Some reminders failed:",
-        failedEmails.map((f) => f.error?.message)
+        failedEmails.map((f) => f.error?.message),
       );
     }
 
@@ -285,7 +310,7 @@ export async function sendEventReminder(
       } as EmailLogDocument);
 
       // Record activity for audit trail
-      const activitiesCollection = db.collection("activities");
+      const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
       await activitiesCollection.insertOne({
         action: "event_reminder_sent",
         eventId: new ObjectId(eventId),
@@ -316,8 +341,17 @@ export async function sendEventReminder(
  */
 export async function sendCustomBroadcast(
   subject: string,
-  htmlContent: string
+  htmlContent: string,
 ): Promise<EmailResponse> {
+  const authError = await requireAuth<never>();
+  if (authError) {
+    return {
+      success: false,
+      message: authError.message,
+      error: authError.error,
+    };
+  }
+
   try {
     // Validate API key is configured
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -327,7 +361,7 @@ export async function sendCustomBroadcast(
 
     // Connect to database
     const { db } = await connectToDatabase();
-    const registrationsCollection = db.collection("registrations");
+    const registrationsCollection = db.collection(REGISTRATIONS_COLLECTION);
 
     // Fetch all registered community members
     const registrations = (await registrationsCollection
@@ -346,7 +380,7 @@ export async function sendCustomBroadcast(
       .map((reg) => reg.email)
       .filter(
         (email): email is string =>
-          typeof email === "string" && email.length > 0
+          typeof email === "string" && email.length > 0,
       );
 
     if (recipientEmails.length === 0) {
@@ -372,7 +406,7 @@ export async function sendCustomBroadcast(
     }
 
     // Log email send in database
-    const emailLogsCollection = db.collection("email_logs");
+    const emailLogsCollection = db.collection(EMAIL_LOGS_COLLECTION);
     await emailLogsCollection.insertOne({
       emailType: "custom-broadcast",
       trigger: "manual",
@@ -384,7 +418,7 @@ export async function sendCustomBroadcast(
     } as EmailLogDocument);
 
     // Record activity for audit trail
-    const activitiesCollection = db.collection("activities");
+    const activitiesCollection = db.collection(ACTIVITIES_COLLECTION);
     await activitiesCollection.insertOne({
       action: "custom_broadcast_sent",
       details: `Custom broadcast sent to ${recipientEmails.length} members`,
@@ -418,10 +452,18 @@ export async function getRemindersSentStatus(eventId: string): Promise<{
   data?: Record<TimeFrame, boolean>;
   error?: string;
 }> {
+  const authError = await requireAuth<never>();
+  if (authError) {
+    return {
+      success: false,
+      error: authError.error,
+    };
+  }
+
   try {
     // Connect to database
     const { db } = await connectToDatabase();
-    const emailLogsCollection = db.collection("email_logs");
+    const emailLogsCollection = db.collection(EMAIL_LOGS_COLLECTION);
 
     // Find all reminder logs for this event
     const reminderLogs = (await emailLogsCollection
@@ -468,10 +510,18 @@ export async function getEmailHistory(limit = 50): Promise<{
   data?: EmailLogDocument[];
   error?: string;
 }> {
+  const authError = await requireAuth<never>();
+  if (authError) {
+    return {
+      success: false,
+      error: authError.error,
+    };
+  }
+
   try {
     // Connect to database
     const { db } = await connectToDatabase();
-    const emailLogsCollection = db.collection("email_logs");
+    const emailLogsCollection = db.collection(EMAIL_LOGS_COLLECTION);
 
     // Fetch recent email logs, sorted by most recent first
     const logs = (await emailLogsCollection
@@ -498,12 +548,12 @@ export async function getEmailHistory(limit = 50): Promise<{
  * Returns true if announcement has been sent, false otherwise
  */
 export async function hasAnnouncementBeenSent(
-  eventId: string
+  eventId: string,
 ): Promise<boolean> {
   try {
     // Connect to database
     const { db } = await connectToDatabase();
-    const eventsCollection = db.collection("events");
+    const eventsCollection = db.collection(EVENTS_COLLECTION);
 
     // Find the event and check announcementSent flag
     const event = (await eventsCollection.findOne({

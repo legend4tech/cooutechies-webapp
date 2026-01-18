@@ -30,6 +30,7 @@ export function useCoreTeamMembers() {
     queryKey: coreTeamKeys.list(),
     queryFn: async () => {
       const response = await getCoreTeamMembers();
+      console.log(response);
       if (!response.success) {
         throw new Error(response.error || "Failed to fetch team members");
       }
@@ -147,7 +148,7 @@ export function useDeleteCoreTeamMember() {
         return {
           ...old,
           members: old.members.filter(
-            (m: CoreTeamMember) => m._id.toString() !== memberId
+            (m: CoreTeamMember) => m._id.toString() !== memberId,
           ),
           total: old.total - 1,
         };
@@ -201,7 +202,7 @@ export function useOptimisticUpdateCoreTeamMember() {
 
       // Snapshot previous value
       const previousMember = queryClient.getQueryData(
-        coreTeamKeys.detail(memberId)
+        coreTeamKeys.detail(memberId),
       );
 
       // Optimistically update
@@ -214,7 +215,7 @@ export function useOptimisticUpdateCoreTeamMember() {
             ...data,
             updatedAt: new Date(),
           };
-        }
+        },
       );
 
       return { previousMember, memberId };
@@ -224,7 +225,7 @@ export function useOptimisticUpdateCoreTeamMember() {
       if (context?.previousMember) {
         queryClient.setQueryData(
           coreTeamKeys.detail(context.memberId),
-          context.previousMember
+          context.previousMember,
         );
       }
       toast.error(error.message || "Failed to update team member");

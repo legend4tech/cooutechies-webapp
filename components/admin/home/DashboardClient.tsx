@@ -68,10 +68,10 @@ export function DashboardClient() {
     refetchActivities();
   };
 
-  // Extract pagination data
+  // Extract pagination data - now properly typed
   const activities = activityData?.activities ?? [];
   const totalActivities = activityData?.total ?? 0;
-  const totalPages = activityData?.totalPages ?? 1;
+  const totalPages = activityData?.totalPages ?? 0;
 
   // Check if we can paginate
   const canGoNext = currentPage < totalPages;
@@ -100,44 +100,35 @@ export function DashboardClient() {
     const maxVisiblePages = 5;
 
     if (totalPages <= maxVisiblePages) {
-      // Show all pages if total is less than max visible
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always show first page
       pages.push(1);
 
-      // Calculate range around current page
       let startPage = Math.max(2, currentPage - 1);
       let endPage = Math.min(totalPages - 1, currentPage + 1);
 
-      // Adjust range if at the beginning
       if (currentPage <= 2) {
         endPage = 4;
       }
 
-      // Adjust range if at the end
       if (currentPage >= totalPages - 1) {
         startPage = totalPages - 3;
       }
 
-      // Add ellipsis after first page if needed
       if (startPage > 2) {
         pages.push("ellipsis-start");
       }
 
-      // Add page numbers in range
       for (let i = startPage; i <= endPage; i++) {
         pages.push(i);
       }
 
-      // Add ellipsis before last page if needed
       if (endPage < totalPages - 1) {
         pages.push("ellipsis-end");
       }
 
-      // Always show last page
       pages.push(totalPages);
     }
 
@@ -309,63 +300,56 @@ export function DashboardClient() {
                 <>
                   {/* Activity List */}
                   <div className="space-y-0 min-h-[400px]">
-                    {activitiesLoading ? (
-                      <ActivityLogSkeleton />
-                    ) : (
-                      activities.map((activity) => {
-                        // Determine activity type for icon
-                        const isSuccess =
-                          activity.action.includes("created") ||
-                          activity.action.includes("sent");
-                        const StatusIcon = isSuccess
-                          ? CheckCircle2
-                          : AlertCircle;
-                        const statusColor = isSuccess
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-blue-600 dark:text-blue-400";
-                        const statusBg = isSuccess
-                          ? "bg-green-500/20"
-                          : "bg-blue-500/20";
+                    {activities.map((activity) => {
+                      // Determine activity type for icon
+                      const isSuccess =
+                        activity.action.includes("created") ||
+                        activity.action.includes("sent");
+                      const StatusIcon = isSuccess ? CheckCircle2 : AlertCircle;
+                      const statusColor = isSuccess
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-blue-600 dark:text-blue-400";
+                      const statusBg = isSuccess
+                        ? "bg-green-500/20"
+                        : "bg-blue-500/20";
 
-                        return (
+                      return (
+                        <div
+                          key={activity._id}
+                          className="flex items-start gap-4 py-5 border-b border-border/30 last:border-0 group hover:bg-muted/30 -mx-4 px-4 rounded-lg transition-all duration-200"
+                        >
+                          {/* Status Icon */}
                           <div
-                            key={activity._id}
-                            className="flex items-start gap-4 py-5 border-b border-border/30 last:border-0 group hover:bg-muted/30 -mx-4 px-4 rounded-lg transition-all duration-200"
+                            className={`p-2 rounded-xl ${statusBg} group-hover:scale-110 transition-transform duration-200 shrink-0 mt-0.5`}
                           >
-                            {/* Status Icon */}
-                            <div
-                              className={`p-2 rounded-xl ${statusBg} group-hover:scale-110 transition-transform duration-200 shrink-0 mt-0.5`}
-                            >
-                              <StatusIcon
-                                className={`h-4 w-4 ${statusColor}`}
-                              />
-                            </div>
+                            <StatusIcon className={`h-4 w-4 ${statusColor}`} />
+                          </div>
 
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-foreground capitalize mb-1">
-                                {activity.action.replace(/_/g, " ")}
-                              </p>
-                              <p className="text-sm text-muted-foreground leading-relaxed">
-                                {activity.details}
-                              </p>
-                              <p className="text-xs text-muted-foreground/80 mt-2 flex items-center gap-1.5">
-                                <Clock className="h-3 w-3" />
-                                {new Date(
-                                  activity.createdAt
-                                ).toLocaleDateString("en-US", {
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground capitalize mb-1">
+                              {activity.action.replace(/_/g, " ")}
+                            </p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {activity.details}
+                            </p>
+                            <p className="text-xs text-muted-foreground/80 mt-2 flex items-center gap-1.5">
+                              <Clock className="h-3 w-3" />
+                              {new Date(activity.createdAt).toLocaleDateString(
+                                "en-US",
+                                {
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
                                   hour: "2-digit",
                                   minute: "2-digit",
-                                })}
-                              </p>
-                            </div>
+                                },
+                              )}
+                            </p>
                           </div>
-                        );
-                      })
-                    )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Pagination Controls */}

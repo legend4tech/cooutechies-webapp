@@ -50,7 +50,7 @@ export interface EmailReminder {
 }
 
 /**
- * Activity Log Document
+ * Activity Log Document (Database version with ObjectId)
  * Tracks important actions for the dashboard activity feed
  */
 export interface ActivityLog {
@@ -60,10 +60,27 @@ export interface ActivityLog {
     | "announcement_sent"
     | "reminder_sent"
     | "thank_you_sent"
-    | "registration";
+    | "registration"
+    | "admin_registered"
+    | "custom_broadcast_sent"
+    | "event_reminder_sent";
   eventId?: ObjectId;
+  memberId?: ObjectId;
   details: string;
   createdAt: Date;
+}
+
+/**
+ * Serialized Activity Log (Client-safe version with string IDs)
+ * Used for API responses and client components
+ */
+export interface SerializedActivityLog {
+  _id: string;
+  action: string;
+  eventId?: string;
+  memberId?: string;
+  details: string;
+  createdAt: string;
 }
 
 /**
@@ -74,6 +91,11 @@ export interface ApiResponse<T = unknown> {
   message: string;
   data?: T;
   error?: string;
+  // Pagination metadata (optional, added by paginated endpoints)
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
 }
 
 export interface DashboardStats {
@@ -81,4 +103,15 @@ export interface DashboardStats {
   upcomingEvents: number;
   totalRegistrations: number;
   emailsSentLast7Days: number;
+}
+
+/**
+ * Activity Log Response with Pagination
+ */
+export interface ActivityLogPaginatedResponse {
+  activities: SerializedActivityLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

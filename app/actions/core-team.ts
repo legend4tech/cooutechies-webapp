@@ -40,9 +40,9 @@ function serializeMember(member: CoreTeamMemberDB): CoreTeamMember {
  * @returns API response with created member ID
  */
 export async function createCoreTeamMember(
-  formData: CoreTeamFormData
+  formData: CoreTeamFormData,
 ): Promise<ApiResponse<{ memberId: string }>> {
-  const authError = await requireAuth();
+  const authError = await requireAuth<{ memberId: string }>();
   if (authError) return authError;
 
   try {
@@ -151,7 +151,7 @@ export async function getCoreTeamMembers(): Promise<
  * @returns Core team member details (serialized for client)
  */
 export async function getCoreTeamMemberById(
-  memberId: string
+  memberId: string,
 ): Promise<ApiResponse<CoreTeamMember>> {
   try {
     if (!ObjectId.isValid(memberId)) {
@@ -207,7 +207,7 @@ export async function getCoreTeamMemberById(
  */
 export async function updateCoreTeamMember(
   memberId: string,
-  formData: Partial<CoreTeamFormData>
+  formData: Partial<CoreTeamFormData>,
 ): Promise<ApiResponse> {
   try {
     if (!ObjectId.isValid(memberId)) {
@@ -251,7 +251,7 @@ export async function updateCoreTeamMember(
       db.collection<CoreTeamMemberDB>(CORE_TEAM_COLLECTION);
     const result = await coreTeamCollection.updateOne(
       { _id: new ObjectId(memberId) },
-      { $set: updateData }
+      { $set: updateData },
     );
 
     if (result.matchedCount === 0) {
@@ -290,7 +290,7 @@ export async function updateCoreTeamMember(
  * @returns API response with deletion status
  */
 export async function deleteCoreTeamMember(
-  memberId: string
+  memberId: string,
 ): Promise<ApiResponse> {
   try {
     if (!ObjectId.isValid(memberId)) {

@@ -600,8 +600,15 @@ export default function Register() {
                       transition={{ delay: 0.5 }}
                       className="flex flex-col sm:flex-row gap-4 justify-center"
                     >
+                      <Button
+                        variant="default"
+                        size="lg"
+                        onClick={() => setIsSubmitted(false)}
+                      >
+                        Register Another Person
+                      </Button>
                       <Link href="/">
-                        <Button variant="default" size="lg">
+                        <Button variant="outline" size="lg">
                           Back to Home
                         </Button>
                       </Link>

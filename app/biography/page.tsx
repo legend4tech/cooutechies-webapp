@@ -13,7 +13,7 @@ export const metadata = {
 
 export default function BiographyPage() {
   return (
-    <main className="w-full bg-background">
+    <main className="w-full bg-background overflow-x-hidden">
       <Navbar />
       {/* Hero section with  introduction and image gallery */}
       <BiographyHeroAbout />

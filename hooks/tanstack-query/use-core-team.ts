@@ -31,10 +31,14 @@ export function useCoreTeamMembers() {
     queryFn: async () => {
       const response = await getCoreTeamMembers();
       console.log(response);
-      if (!response.success) {
+      if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to fetch team members");
       }
-      return response.data;
+      // Reverse the members array so newest appears first
+      return {
+        ...response.data,
+        members: response.data.members.reverse(),
+      };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -143,16 +147,19 @@ export function useDeleteCoreTeamMember() {
       const previousMembers = queryClient.getQueryData(coreTeamKeys.list());
 
       // Optimistically update to remove the member
-      queryClient.setQueryData(coreTeamKeys.list(), (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          members: old.members.filter(
-            (m: CoreTeamMember) => m._id.toString() !== memberId,
-          ),
-          total: old.total - 1,
-        };
-      });
+      queryClient.setQueryData(
+        coreTeamKeys.list(),
+        (old: { members: CoreTeamMember[]; total: number } | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            members: old.members.filter(
+              (m: CoreTeamMember) => m._id.toString() !== memberId,
+            ),
+            total: old.total - 1,
+          };
+        },
+      );
 
       return { previousMembers };
     },

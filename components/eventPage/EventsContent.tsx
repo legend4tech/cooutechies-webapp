@@ -1,23 +1,24 @@
+"use client";
+
 import Link from "next/link";
 import { Calendar, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/eventPage/EventCard";
-import { getEvents } from "@/app/actions/events";
 import { calculateEventEndTime } from "@/lib/eventDurationUtils";
-import { ObjectId } from "mongodb";
 import { EventsInlineError } from "./EventsErrorFallback";
+import { EventsLoadingSkeleton } from "./EventsLoadingSkeleton";
+import { useEvents } from "@/hooks/tanstack-query/use-events";
 
 /**
  * EventsContent Component
- * Handles the data fetching and rendering of events
- * Separated from the page for Suspense streaming
+ * Client component that uses TanStack Query for data fetching
  */
 
 interface EventWithCount {
-  _id: string; // Changed from ObjectId
+  _id: string;
   title: string;
   description: string;
-  date: string; // Changed from Date
+  date: string;
   location: string;
   coverImage: string;
   duration?: string;
@@ -45,17 +46,22 @@ function separateEvents(events: EventWithCount[]) {
   return { upcoming, past };
 }
 
-export async function EventsContent() {
-  // Fetch events from database
-  const response = await getEvents();
+export function EventsContent() {
+  // Use TanStack Query hook
+  const { data, isLoading, isError, error } = useEvents(1, 50);
 
-  // Handle fetch error with inline error component
-  if (!response.success || !response.data) {
+  // Handle loading state
+  if (isLoading) {
+    return <EventsLoadingSkeleton />;
+  }
+
+  // Handle error state
+  if (isError || !data) {
     return <EventsInlineError />;
   }
 
   // Get events and separate into upcoming and past
-  const allEvents = response.data.events;
+  const allEvents = data.events;
   const { upcoming, past } = separateEvents(allEvents);
 
   return (
@@ -84,12 +90,12 @@ export async function EventsContent() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {upcoming.map((event) => (
                 <EventCard
-                  key={event._id.toString()}
+                  key={event._id}
                   event={{
-                    _id: event._id.toString(),
+                    _id: event._id,
                     title: event.title,
                     description: event.description,
-                    date: event.date ? event.date : event.date,
+                    date: event.date,
                     location: event.location,
                     coverImage: event.coverImage,
                     maxAttendees: event.maxAttendees ?? null,
@@ -136,12 +142,12 @@ export async function EventsContent() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {past.map((event) => (
                 <EventCard
-                  key={event._id.toString()}
+                  key={event._id}
                   event={{
-                    _id: event._id.toString(),
+                    _id: event._id,
                     title: event.title,
                     description: event.description,
-                    date: event.date ? event.date : event.date,
+                    date: event.date,
                     location: event.location,
                     coverImage: event.coverImage,
                     maxAttendees: event.maxAttendees ?? null,

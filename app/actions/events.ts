@@ -47,9 +47,10 @@ export async function createEvent(
       speakers: (formData.speakers || []).map((speaker) => ({
         name: speaker.name,
         role: speaker.role,
-        photo: speaker.photo ?? undefined,
+        bio: speaker.bio || "",
+        photo: speaker.photo || "",
       })),
-      maxAttendees: formData.maxAttendees ?? undefined,
+      ...(formData.maxAttendees ? { maxAttendees: formData.maxAttendees } : {}),
       createdAt: new Date(),
       updatedAt: new Date(),
       announcementSent: false,
@@ -72,6 +73,7 @@ export async function createEvent(
     };
   } catch (error) {
     console.error("[Events] Create failed:", error);
+
     return {
       success: false,
       message: "Failed to create event",
@@ -287,8 +289,8 @@ export async function updateEvent(
       updateData.speakers = formData.speakers.map((speaker) => ({
         name: speaker.name,
         role: speaker.role,
-        bio: speaker.bio || undefined,
-        photo: speaker.photo || undefined,
+        bio: speaker.bio || "",
+        photo: speaker.photo || "",
       }));
     }
     if (formData.maxAttendees !== undefined) {

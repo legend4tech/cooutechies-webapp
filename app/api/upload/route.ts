@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     // Construct public URL for the uploaded file
-    const fileUrl = `https://${process.env.MY_AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueFileName}`;
+    const fileUrl = `https://${process.env.MY_AWS_S3_BUCKET_NAME}.s3.${process.env.MY_AWS_REGION}.amazonaws.com/${uniqueFileName}`;
 
     return NextResponse.json({ success: true, fileUrl });
   } catch (error) {

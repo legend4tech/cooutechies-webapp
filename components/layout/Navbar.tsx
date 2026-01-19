@@ -315,7 +315,7 @@ export default function Navbar() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.08, duration: 0.3 }}
                 >
-                  <a
+                  <Link
                     href={link.href}
                     onClick={(e) => {
                       if (link.isHash) {
@@ -327,7 +327,7 @@ export default function Navbar() {
                     className="block px-4 py-3 text-foreground font-bold hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </motion.div>
               ))}
               <motion.div
@@ -335,9 +335,12 @@ export default function Navbar() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                <button className="mt-4 w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-lg py-3 shadow-lg transition-all hover:scale-[1.02]">
+                <Button
+                  href="/register"
+                  className="mt-4 w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-lg py-3 shadow-lg transition-all hover:scale-[1.02]"
+                >
                   Join Us
-                </button>
+                </Button>
               </motion.div>
             </nav>
           </motion.div>

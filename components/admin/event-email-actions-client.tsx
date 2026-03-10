@@ -160,61 +160,87 @@ export function EventEmailActionsClient({
                 </span>
               </div>
             )}
+
+            {eventIsPast && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">
+                  Event Ended
+                </span>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {allCommunityEmails.length} community member
-              {allCommunityEmails.length !== 1 ? "s" : ""} will receive this
-              announcement.
-            </p>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  disabled={
-                    announcementSent || sendAnnouncementMutation.isPending
-                  }
-                  className="w-full bg-linear-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                >
-                  {sendAnnouncementMutation.isPending
-                    ? "Sending..."
-                    : announcementSent
-                    ? "Announcement Already Sent"
-                    : "Send Announcement"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-yellow-600" />
-                    Confirm Announcement Send
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will send an announcement email to{" "}
-                    {allCommunityEmails.length} community member
-                    {allCommunityEmails.length !== 1 ? "s" : ""}. This action
-                    cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="bg-background/50 border border-border/50 rounded-lg p-4 my-4 space-y-2">
-                  <p className="text-sm font-semibold text-foreground">
-                    {eventTitle}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{eventDate}</p>
-                </div>
-                <div className="flex gap-3">
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleSendAnnouncement}
-                    className="bg-primary hover:bg-primary/90"
+          {eventIsPast ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <div className="p-3 rounded-full bg-muted/50 border border-border/50">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Announcements Disabled
+                </p>
+                <p className="text-xs text-muted-foreground max-w-60">
+                  This event has already ended. Announcements can only be sent
+                  for upcoming events.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {allCommunityEmails.length} community member
+                {allCommunityEmails.length !== 1 ? "s" : ""} will receive this
+                announcement.
+              </p>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    disabled={
+                      announcementSent || sendAnnouncementMutation.isPending
+                    }
+                    className="w-full bg-linear-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
                   >
-                    Send Announcement
-                  </AlertDialogAction>
-                </div>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+                    {sendAnnouncementMutation.isPending
+                      ? "Sending..."
+                      : announcementSent
+                        ? "Announcement Already Sent"
+                        : "Send Announcement"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-yellow-600" />
+                      Confirm Announcement Send
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will send an announcement email to{" "}
+                      {allCommunityEmails.length} community member
+                      {allCommunityEmails.length !== 1 ? "s" : ""}. This action
+                      cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="bg-background/50 border border-border/50 rounded-lg p-4 my-4 space-y-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      {eventTitle}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{eventDate}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleSendAnnouncement}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      Send Announcement
+                    </AlertDialogAction>
+                  </div>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -244,14 +270,19 @@ export function EventEmailActionsClient({
         <CardContent>
           <div className="space-y-4">
             {eventIsPast ? (
-              <div className="text-center py-6 space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Reminders Disabled
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  This event has already ended. Reminders can only be sent for
-                  upcoming events.
-                </p>
+              <div className="flex flex-col items-center justify-center py-8 gap-3">
+                <div className="p-3 rounded-full bg-muted/50 border border-border/50">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Reminders Disabled
+                  </p>
+                  <p className="text-xs text-muted-foreground max-w-60">
+                    This event has already ended. Reminders can only be sent for
+                    upcoming events.
+                  </p>
+                </div>
               </div>
             ) : (
               <>
@@ -280,8 +311,8 @@ export function EventEmailActionsClient({
                               isSent
                                 ? "bg-green-500/5 border-green-500/20 text-green-600 dark:text-green-400 cursor-not-allowed"
                                 : selectedTimeFrame === timeFrame
-                                ? "bg-secondary/20 border-secondary/50 text-secondary"
-                                : "bg-background/50 border-border/50 text-muted-foreground hover:border-secondary/30"
+                                  ? "bg-secondary/20 border-secondary/50 text-secondary"
+                                  : "bg-background/50 border-border/50 text-muted-foreground hover:border-secondary/30"
                             }`}
                           >
                             <span className={isSent ? "opacity-70" : ""}>
@@ -292,7 +323,7 @@ export function EventEmailActionsClient({
                             )}
                           </button>
                         );
-                      }
+                      },
                     )}
                   </div>
                 </div>
@@ -310,10 +341,10 @@ export function EventEmailActionsClient({
                       {sendReminderMutation.isPending
                         ? "Sending..."
                         : registrations.length === 0
-                        ? "No Attendees to Remind"
-                        : sentReminders[selectedTimeFrame]
-                        ? "Reminder Already Sent"
-                        : "Send Reminder"}
+                          ? "No Attendees to Remind"
+                          : sentReminders[selectedTimeFrame]
+                            ? "Reminder Already Sent"
+                            : "Send Reminder"}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>

@@ -4,7 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { Calendar, MapPin, Users, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { isEventOngoing, formatDuration } from "@/lib/eventDurationUtils";
+import {
+  isEventOngoing,
+  formatDuration,
+  isEventUpcoming,
+} from "@/lib/eventDurationUtils";
 
 /**
  * EventCard Component
@@ -55,6 +59,7 @@ export function EventCard({
 
   // Check if event is currently ongoing based on duration
   const isOngoing = isEventOngoing(event.date, duration);
+  const isUpcoming = isEventUpcoming(event.date);
 
   return (
     <div
@@ -93,8 +98,15 @@ export function EventCard({
           </div>
         )}
 
+        {/* Upcoming Badge */}
+        {isUpcoming && (
+          <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-secondary/90 backdrop-blur-sm text-xs font-medium">
+            Upcoming
+          </div>
+        )}
+
         {/* Ongoing Badge */}
-        {isOngoing && !isPast && (
+        {isOngoing && (
           <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-primary/90 backdrop-blur-sm text-xs font-medium text-primary-foreground">
             Ongoing
           </div>
@@ -157,8 +169,8 @@ export function EventCard({
             {isPast
               ? "Event Ended"
               : isOngoing
-              ? "Register (Event in progress)"
-              : "Register Now"}
+                ? "Register (Event in progress)"
+                : "Register Now"}
           </Button>
         </Link>
       </div>

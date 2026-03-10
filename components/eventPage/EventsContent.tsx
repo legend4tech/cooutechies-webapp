@@ -22,7 +22,7 @@ interface EventWithCount {
   location: string;
   coverImage: string;
   duration?: string;
-  maxAttendees?: number;
+  maxAttendees?: number | null;
   registrationCount?: number;
 }
 
@@ -48,7 +48,7 @@ function separateEvents(events: EventWithCount[]) {
 
 export function EventsContent() {
   // Use TanStack Query hook
-  const { data, isLoading, isError, error } = useEvents(1, 50);
+  const { data, isLoading, isError } = useEvents(1, 50);
 
   // Handle loading state
   if (isLoading) {
@@ -76,7 +76,7 @@ export function EventsContent() {
             </div>
             <div>
               <h2 className="text-2xl md:text-3xl font-display font-bold">
-                Upcoming Events
+                UpComing / OnGoing Events
               </h2>
               <p className="text-muted-foreground text-sm">
                 {upcoming.length} {upcoming.length === 1 ? "event" : "events"}{" "}

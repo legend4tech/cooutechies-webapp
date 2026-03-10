@@ -24,7 +24,7 @@ export interface SerializedEvent {
   coverImage: string;
   duration?: string;
   speakers?: SerializedSpeaker[];
-  maxAttendees?: number;
+  maxAttendees?: number | null;
   createdAt: string;
   updatedAt: string;
   announcementSent: boolean;

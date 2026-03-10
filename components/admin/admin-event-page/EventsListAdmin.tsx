@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, Calendar, MapPin, Users, Clock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { formatDuration } from "@/lib/eventDurationUtils";
+import { formatDuration, isEventPast } from "@/lib/eventDurationUtils";
 
 export function EventsListAdmin() {
   const { data, isLoading, error } = useEvents(1, 50);
@@ -72,12 +72,18 @@ export function EventsListAdmin() {
                   <div className="absolute top-3 right-3">
                     <span
                       className={`text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-md ${
-                        event.announcementSent
-                          ? "bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30"
-                          : "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30"
+                        isEventPast(event.date, event.duration)
+                          ? "bg-zinc-800/80 text-zinc-100 border border-zinc-600/50"
+                          : event.announcementSent
+                            ? "bg-green-700/80 text-white border border-green-600/50"
+                            : "bg-yellow-600/80 text-white border border-yellow-500/50"
                       }`}
                     >
-                      {event.announcementSent ? "Announced" : "Pending"}
+                      {isEventPast(event.date, event.duration)
+                        ? "Past Event"
+                        : event.announcementSent
+                          ? "Announced"
+                          : "Pending Announcement"}
                     </span>
                   </div>
                 </div>

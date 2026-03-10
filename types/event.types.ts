@@ -25,7 +25,7 @@ export interface Event {
   coverImage: string;
   duration: string;
   speakers: Speaker[];
-  maxAttendees?: number | undefined;
+  maxAttendees?: number | null;
   createdAt: Date;
   updatedAt: Date;
   announcementSent: boolean;

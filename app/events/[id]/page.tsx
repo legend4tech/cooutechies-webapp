@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   Calendar,
@@ -16,8 +15,7 @@ import { EventStatusBadge } from "@/components/eventPage/EventStatusBadge";
 import { getEventById } from "@/app/actions/events";
 import { isRegistrationOpen, formatDuration } from "@/lib/eventDurationUtils";
 import { Speaker } from "@/types/event.types";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/sections/Footer";
+
 import EventDetailSkeleton from "@/components/eventPage/EventDetailSkeleton";
 import EventDetailError from "@/components/eventPage/EventDetailError";
 import { Suspense } from "react";

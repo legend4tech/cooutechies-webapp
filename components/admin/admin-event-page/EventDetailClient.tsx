@@ -158,13 +158,13 @@ export function EventDetailClient({
   const startIndex = (registrationsPage - 1) * REGISTRATIONS_PER_PAGE + 1;
   const endIndex = Math.min(
     registrationsPage * REGISTRATIONS_PER_PAGE,
-    totalRegistrations
+    totalRegistrations,
   );
 
   return (
     <>
       {/* Hero Image - Portrait aspect ratio */}
-      <div className="relative w-full aspect-[3/4] max-h-[600px] rounded-xl overflow-hidden border border-border/50 shadow-xl">
+      <div className="relative w-full aspect-3/4 max-h-150 rounded-xl overflow-hidden border border-border/50 shadow-xl">
         <Image
           src={event.coverImage}
           alt={event.title}
@@ -209,6 +209,12 @@ export function EventDetailClient({
                       month: "long",
                       day: "numeric",
                       year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(event.date).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
                     })}
                   </p>
                 </div>
@@ -281,6 +287,7 @@ export function EventDetailClient({
         </div>
 
         {/* Announcement Status */}
+        {/* Announcement Status */}
         <div className="flex items-center gap-3 p-4 rounded-lg bg-background/50 border border-border/50">
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">
@@ -288,15 +295,24 @@ export function EventDetailClient({
             </p>
           </div>
           <span
-            className={`inline-flex items-center px-4 py-2 rounded-full font-medium text-sm ${
-              event.announcementSent
-                ? "bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20"
-                : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border border-yellow-500/20"
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm ${
+              eventIsPast
+                ? "bg-muted/50 text-muted-foreground border border-border/50"
+                : event.announcementSent
+                  ? "bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20"
+                  : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border border-yellow-500/20"
             }`}
           >
-            {event.announcementSent
-              ? "✓ Announcement Sent"
-              : "⏱ Announcement Pending"}
+            {eventIsPast ? (
+              <>
+                <Clock className="h-4 w-4" />
+                Event Ended
+              </>
+            ) : event.announcementSent ? (
+              "✓ Announcement Sent"
+            ) : (
+              "⏱ Announcement Pending"
+            )}
           </span>
         </div>
       </div>
@@ -426,7 +442,7 @@ export function EventDetailClient({
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
-                                }
+                                },
                               )}
                             </td>
                           </tr>

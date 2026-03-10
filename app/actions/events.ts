@@ -50,7 +50,7 @@ export async function createEvent(
         bio: speaker.bio || "",
         photo: speaker.photo || "",
       })),
-      ...(formData.maxAttendees ? { maxAttendees: formData.maxAttendees } : {}),
+      maxAttendees: formData.maxAttendees ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
       announcementSent: false,

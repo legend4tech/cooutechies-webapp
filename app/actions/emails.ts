@@ -39,7 +39,7 @@ interface RegistrationDocument {
 }
 
 interface EmailLogDocument {
-  _id: ObjectId;
+  _id?: ObjectId;
   eventId?: ObjectId;
   emailType: string;
   trigger: string;
@@ -47,6 +47,7 @@ interface EmailLogDocument {
   sentAt: Date;
   subject: string;
   resendId?: string;
+  resendIds?: string[];
   timeFrame?: TimeFrame;
   htmlContentLength?: number;
   [key: string]: unknown;
@@ -146,23 +147,41 @@ export async function sendEventAnnouncement(
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const registrationLink = `${baseUrl}/events/${eventId}`;
 
-    // Send announcement email to all recipients
-    const response = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: recipientEmails,
-      subject: `🎉 New Event: ${eventData.title}`,
-      react: EventAnnouncementEmail({
-        eventTitle: eventData.title,
-        eventDescription: eventData.description,
-        eventDate: eventData.date,
-        eventLocation: eventData.location,
-        eventImage: eventData.thumbnail,
-        registrationLink,
-      }),
-    });
+    // Send announcement email in batches (Resend batch API supports up to 100 per call)
+    const BATCH_SIZE = 50;
+    const batchPromises = [];
 
-    if (response.error) {
-      throw new Error(`Resend API error: ${response.error.message}`);
+    for (let i = 0; i < recipientEmails.length; i += BATCH_SIZE) {
+      const batch = recipientEmails.slice(i, i + BATCH_SIZE);
+
+      // Create individual email objects for each recipient
+      const emailBatch = batch.map((email) => ({
+        from: FROM_EMAIL,
+        to: email,
+        subject: `🎉 New Event: ${eventData.title}`,
+        react: EventAnnouncementEmail({
+          eventTitle: eventData.title,
+          eventDescription: eventData.description,
+          eventDate: eventData.date,
+          eventLocation: eventData.location,
+          eventImage: eventData.thumbnail,
+          registrationLink,
+        }),
+      }));
+
+      batchPromises.push(resend.batch.send(emailBatch));
+    }
+
+    // Execute all batches in parallel
+    const responses = await Promise.all(batchPromises);
+
+    // Check for errors in any batch
+    const hasErrors = responses.some((response) => response.error);
+    if (hasErrors) {
+      const errorMsg =
+        responses.find((response) => response.error)?.error?.message ||
+        "Unknown error";
+      throw new Error(`Resend API error: ${errorMsg}`);
     }
 
     // Update event document - mark announcement as sent
@@ -174,6 +193,10 @@ export async function sendEventAnnouncement(
 
     // Log email send in database
     const emailLogsCollection = db.collection(EMAIL_LOGS_COLLECTION);
+    const resendIds = responses
+      .flatMap((response) => response.data || [])
+      .map((item) => item.id);
+
     await emailLogsCollection.insertOne({
       eventId: new ObjectId(eventId),
       emailType: "announcement",
@@ -181,7 +204,7 @@ export async function sendEventAnnouncement(
       recipientCount: recipientEmails.length,
       sentAt: new Date(),
       subject: `New Event: ${eventData.title}`,
-      resendId: response.data?.id,
+      resendIds: resendIds,
     } as EmailLogDocument);
 
     // Record activity for audit trail
@@ -390,30 +413,52 @@ export async function sendCustomBroadcast(
       };
     }
 
-    // Send broadcast email
-    const response = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: recipientEmails,
-      subject: subject,
-      react: CustomBroadcastEmail({
-        subject,
-        htmlContent,
-      }),
-    });
+    // Send broadcast email in batches (Resend batch API supports up to 100 per call)
+    const BATCH_SIZE = 50;
+    const batchPromises = [];
 
-    if (response.error) {
-      throw new Error(`Resend API error: ${response.error.message}`);
+    for (let i = 0; i < recipientEmails.length; i += BATCH_SIZE) {
+      const batch = recipientEmails.slice(i, i + BATCH_SIZE);
+
+      // Create individual email objects for each recipient
+      const emailBatch = batch.map((email) => ({
+        from: FROM_EMAIL,
+        to: email,
+        subject: subject,
+        react: CustomBroadcastEmail({
+          subject,
+          htmlContent,
+        }),
+      }));
+
+      batchPromises.push(resend.batch.send(emailBatch));
+    }
+
+    // Execute all batches in parallel
+    const responses = await Promise.all(batchPromises);
+
+    // Check for errors in any batch
+    const hasErrors = responses.some((response) => response.error);
+    if (hasErrors) {
+      const errorMsg =
+        responses.find((response) => response.error)?.error?.message ||
+        "Unknown error";
+      throw new Error(`Resend API error: ${errorMsg}`);
     }
 
     // Log email send in database
     const emailLogsCollection = db.collection(EMAIL_LOGS_COLLECTION);
+    const resendIds = responses
+      .flatMap((response) => response.data || [])
+      .map((item) => item.id);
+
     await emailLogsCollection.insertOne({
       emailType: "custom-broadcast",
       trigger: "manual",
       recipientCount: recipientEmails.length,
       sentAt: new Date(),
       subject: subject,
-      resendId: response.data?.id,
+      resendIds: resendIds,
       htmlContentLength: htmlContent.length,
     } as EmailLogDocument);
 
